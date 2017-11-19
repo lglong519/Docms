@@ -248,16 +248,23 @@
 			exp=a,bool=b;
 			this.isChaining?this.tempElems=this.elems:this.tempElems=this.source=this.elems;
 			this.isChaining=true;
-			//先获取所有的后代元素
-			this.elems=this.elems[0].getElementsByTagName('*');
-			//再根据筛选条件对结果再次进行筛选
-			exp&&(this.elems=Docms.elemsFilter(this.elems,exp));
-			this.resetElems();
+			var validElems=[];
+			for(var i=0,_temps;i<this.elems.length;i++){
+				_temps=[];
+				//先获取所有的后代元素
+				_temps=this.elems[i].getElementsByTagName('*');
+				//再根据筛选条件对结果再次进行筛选
+				exp&&(_temps=Docms.elemsFilter(_temps,exp));
+				exp||(_temps=Docms.arrConvert(_temps));
+				validElems=validElems.concat(_temps);
+			}
 			//是否包含当前元素
 			if(bool){
-				this.elems.unshift(this.tempElems[0]);
-				this.resetElems();
+				//this.elems.unshift(this.tempElems[0]);
+				validElems=this.elems.concat(validElems);
 			}
+			this.elems=validElems;
+			this.resetElems();
 			return this;
 		},
 		//将结果集设置成初始状态
@@ -275,7 +282,7 @@
 			if(!this.elems.length){return this;}
 			this.isChaining=true;
 			this.tempElems=this.elems;
-			//父元素时当前元素[0],如果当前元素是空则父元素是document
+			//父元素是当前元素[0],如果当前元素是空则父元素是document
 			attr=attr||"";
 			var reg=Docms.regOfIndStr(attr),
 				value,
@@ -296,6 +303,13 @@
 			}
 			this.elems=[];
 			attr?this.resetElems(attrLis):this.resetElems(typeLis);
+			return this;
+		},
+		//遍历单前全部元素
+		each:function(fn){
+			for(var i=0;i<this.elems.length;i++){
+				fn(i,this.elems[i]);
+			}
 			return this;
 		},
 		//获取/设置样式,type:null/object/string,val:cssValue
@@ -345,6 +359,24 @@
 		width:function(n){
 			n=n||0;
 			return this.elems[n].offsetWidth;
+		},
+		//元素内容
+		html:function(m){
+			if(m!=undefined){
+				this.elems[0].innerHTML=m;
+				return this;
+			}else{
+				return this.elems[0].innerHTML;
+			}
+		},
+		//元素value
+		val:function(m){
+			if(m!=undefined){
+				this.elems[0].value=m;
+				return this;
+			}else{
+				return this.elems[0].value;
+			}
 		}
 	};//end Docms
 	//兼容ie7/8,firefox:获取事件或事件目标,ev=0:返回事件[默认可不填],ev=1:返回目标
@@ -398,7 +430,7 @@
 			return css?elem.currentStyle[css]:elem.currentStyle;
 		}
 	}
-	//获取文档顶部与窗口顶部的距离
+	//获取文档顶部与窗口顶部的距离,参数如果不为零则设置文档的y轴偏移量为axisY
 	Docms.wTop=function(axisY){
 		if(axisY){
 			window.scrollTo(Docms.wLeft(),axisY);
@@ -417,6 +449,7 @@
 		y[y.length] = window.scrollY || 0;
 		return Math.max.apply(this,y);
 	}
+	//获取文档左侧与窗口左侧的距离,参数如果不为零则设置文档的x轴偏移量为axisX
 	Docms.wLeft=function(axisX){
 		if(axisX){
 			window.scrollTo(axisX,Docms.wTop());
@@ -432,15 +465,12 @@
 		y[y.length] = window.scrollX || 0;
 		return Math.max.apply(this,y);
 	}
+	//文档可视区的高度,不包括滚动条
 	Docms.wHeight=function(){
 		return document.documentElement.clientHeight;
 	}
+	//文档可视区的宽度,不包括滚动条
 	Docms.wWidth=function(){
-		//var y=[];
-		//innerWidth所有浏览器都包含滚动条
-		//y[y.length] =window.innerWidth||0;
-		//y[y.length] =document.documentElement.clientWidth|| 0;
-		//return Math.max.apply(this,y);
 		return document.documentElement.clientWidth
 	}
 	//格式化选择器参数
@@ -504,11 +534,23 @@
 			}
 			return _temp;
 		}else{
-			console.error("Docms tips:testElems() invalid elemsArr+exp");
+			console.info("Docms tips:testElems() invalid elemsArr+exp");
 			return [];
 		}
 	}
-	//1.定义ajax函数
+	//兼容ie7:类数组转换
+	Docms.arrConvert=function(arr){
+		try{
+			arr=Array.prototype.slice.call(arr);
+		}catch(e){
+			for(var i=0,_temp=[];i<arr.length;i++){
+				_temp[i]=arr[i];
+			}
+			arr=_temp;
+		}
+		return arr;
+	}
+	//定义ajax函数
 	Docms.ajax=function(config) {
 		//2.使用merge将config初始化合并一下
 		config = merge(config);
