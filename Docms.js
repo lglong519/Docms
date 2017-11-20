@@ -305,10 +305,12 @@
 			attr?this.resetElems(attrLis):this.resetElems(typeLis);
 			return this;
 		},
-		//遍历单前全部元素
+		//遍历当前全部元素,fn有两个默认参数,第一个是每个元素对应的下标i,第二个是i对应的dom类型元素
 		each:function(fn){
+			//遍历所有元素,将下标i和i对应的元素当作参数传入fn并将this指向当前遍历到的元素
 			for(var i=0;i<this.elems.length;i++){
-				fn(i,this.elems[i]);
+				this.elems[i].fun=fn;
+				this.elems[i].fun(i,this.elems[i]);
 			}
 			return this;
 		},
@@ -555,26 +557,26 @@
 		//2.使用merge将config初始化合并一下
 		config = merge(config);
 		//3.创建ajax对象
-		var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("microsoft.XMLHTTP");
+		var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("microsoft.XMLHTTP"),
 		//4.先去判断请求是否为post
-		var isPost = /post/i.test(config.type);
+			isPost = /post/i.test(config.type);
 		//4.1无论是get还是post都要把json数据转化成get参数类型
 		config.data = jsonToGet(config.data);
 		//5.如果是get方式要判断是否要缓存，如果不要缓存就加时间戳。向地址上加时间的时候要判断之前是否有？号
-		if (!isPost) {
-			config.url += (config.url.indexOf("?") > -1 ? "&" : "?") + (config.cache ? "" : new Date().getTime() + "=1") + "&" + config.data;
-		}
-		//6.打开地址
+		isPost||(
+			config.url += (config.url.indexOf("?") > -1 ? "&" : "?") + (config.cache ? "" : new Date().getTime() + "=1") + "&" + config.data
+		);
+		//6.打开地址,兼容Firefox:open方法要放在setRequestHeader之前
 		xhr.open(config.type, config.url, config.async);
 		//7.如果是post
-		if (isPost) {
+		isPost&&(
 			//8.添加请求头
-			xhr.setRequestHeader("content-type", "application/x-www-form-urlencoded");
-		}
+			xhr.setRequestHeader("content-type", "application/x-www-form-urlencoded")
+		);
 		//9.执行发送之前的回调函数，要执行回调函数一定要判断它是不是函数
-		if (typeof config.beforeSend == "function") {
-			config.beforeSend();
-		}
+		typeof config.beforeSend == "function"&&(
+			config.beforeSend()
+		);
 		//10.发送数据
 		xhr.send(config.data);
 		//11.添加监听事件
@@ -629,8 +631,11 @@
 	}
 	Docms.prototype=Docms.fun;
 	Docms.fun.init.prototype=Docms.prototype;
-	// Docms.fun.init.prototype=Docms.fun;
-	DM=w.Docms=Docms;
+	if(w.DM||w.Docms){
+		throw new Error('Docms tips:Object Docms|DM exist!');
+	}else{
+		DM=w.Docms=Docms;
+	}
 }(window,document);
 
 //-------------------------------------------------------------------------------------------------------------
