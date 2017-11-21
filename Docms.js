@@ -56,7 +56,7 @@
 					return this;
 				}
 				if(/^\s*<.*?>\s*$/.test(selector)){
-					var _tempTag=d.createElement('div');
+					var _tempTag=d.createElement('table');
 					_tempTag.innerHTML=selector;
 					this.elems=_tempTag.children;
 				}
@@ -183,15 +183,15 @@
 			if(this.elems.length){
 				for(var i=0;i<this.elems.length;i++){
 					if (this.elems[i].addEventListener) {
-						this.elems[i].addEventListener(type,fn,bool); 
+						this.elems[i].addEventListener(type,fn,bool);
+						//兼容ie,修正this的指向
 					}else if (this.elems[i].attachEvent){
-						this.elems[i].attachEvent('on'+type,fn);
+						this.elems[i].fn=fn;
+						this.elems[i].attachEvent('on'+type,this.elems[i].fn);
+						delete this.elems[i].fn;
 					}
 				}
 			}
-		},
-		isElems:function(){
-			//return this[0].length?:this.isArray(this[0]);
 		},
 		//fetch,查找父元素或子元素时都会将旧结果放入栈底,将当前结果置顶
 		
@@ -386,8 +386,22 @@
 		},
 		//元素内容
 		html:function(m){
-			if(m!=undefined){
-				this.elems[0].innerHTML=m;
+			if(!this.elems[0]){
+				console.warn('Docms.tips:val() 对象不存在');
+				return !1;
+			}
+			if(typeof(m)!=="undefined"){
+				//兼容ie789,解决表格元素innerHTML不可写的问题
+				if(/msie\s*[789]\.0/i.test(navigator.userAgent)&&/table|thead|tbody|tfoot|tr|th|td/i.test(this.elems[0].nodeName)){
+					var div=d.createElement(div),childs;
+					div.innerHTML='<table>'+m+'</table>';
+					childs=div.children[0].children[0].children;
+					for(var i=0;i<childs.length;i++){
+						this.elems[0].appendChild(childs[i++]);
+					}
+				}else{
+					this.elems[0].innerHTML=m;
+				}
 				return this;
 			}else{
 				return this.elems[0].innerHTML;
@@ -395,12 +409,18 @@
 		},
 		//元素value
 		val:function(m){
-			if(m!=undefined){
+			if(!this.elems[0]){
+				console.warn('Docms.tips:val() 对象不存在');
+				return !1;
+			}
+			if(typeof(m)!=="undefined"){
 				this.elems[0].value=m;
 				return this;
 			}else{
 				return this.elems[0].value;
 			}
+		},
+		isElems:function(){
 		}
 	};//end Docms
 	//兼容ie7/8,firefox:获取事件或事件目标,ev=0:返回事件[默认可不填],ev=1:返回目标
@@ -635,8 +655,9 @@
 				case "s":exp=new Date().setSeconds(new Date().getSeconds()+exp[2]*1);
 			}
 		}
+		//传入的参数name有效,则根据val进行读取或设置cookie
 		if(name){
-			if(typeof(val)=='string'){
+			if(typeof(val)=='string'||typeof(val)=='number'){
 				exp?document.cookie=name+'='+encodeURIComponent(val)+';expires='+new Date(exp).toUTCString():
 				document.cookie=name+'='+encodeURIComponent(val);
 				return !0;
@@ -649,6 +670,7 @@
 				}
 				return null;
 			}
+		//传入的参数name无效返回所有cookie
 		}else{
 			return document.cookie;
 		}
