@@ -184,11 +184,15 @@
 				for(var i=0;i<this.elems.length;i++){
 					if (this.elems[i].addEventListener) {
 						this.elems[i].addEventListener(type,fn,bool);
-						//兼容ie,修正this的指向
+						//兼容ie9,修正this的指向
 					}else if (this.elems[i].attachEvent){
 						this.elems[i].fn=fn;
 						this.elems[i].attachEvent('on'+type,this.elems[i].fn);
-						delete this.elems[i].fn;
+						try{
+							delete this.elems[i].fn;
+						}catch(e){
+							this.elems[i].fn=null;
+						}
 					}
 				}
 			}
@@ -316,7 +320,11 @@
 			for(var i=0;i<this.elems.length;i++){
 				this.elems[i].fn=fn;
 				this.elems[i].fn(i,this.elems[i]);
-				delete this.elems[i].fn;
+				try{
+					delete this.elems[i].fn;
+				}catch(e){
+					this.elems[i].fn=null;
+				}
 			}
 			return this;
 		},
@@ -395,9 +403,10 @@
 				if(/msie\s*[789]\.0/i.test(navigator.userAgent)&&/table|thead|tbody|tfoot|tr|th|td/i.test(this.elems[0].nodeName)){
 					var div=d.createElement(div),childs;
 					div.innerHTML='<table>'+m+'</table>';
-					childs=div.children[0].children[0].children;
-					for(var i=0;i<childs.length;i++){
-						this.elems[0].appendChild(childs[i++]);
+					childs=div.children[0].children;
+					if(childs.length>0){
+						childs=childs[0].children;
+						for(var i=0;i<childs.length;this.elems[0].appendChild(childs[i++]));
 					}
 				}else{
 					this.elems[0].innerHTML=m;
