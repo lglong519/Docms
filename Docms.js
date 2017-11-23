@@ -164,6 +164,28 @@
 				}
 			}
 		},
+		//移除元素事件
+		removeEvent:function(type,fnName,bool){
+			bool=bool||false;
+			if(this.elems.length){
+				for(var i=0;i<this.elems.length;i++){
+					if (this.elems[i].removeEventListener) {
+						this.elems[i].removetListener(type,fnName,bool);
+						//兼容ie
+					}else if (this.elems[i].detachEvent){
+						this.elems[i].detachEvent('on'+type,fnName,bool);
+					}
+				}
+			}
+		},
+		//为元素绑定事件
+		on:function(type,fn){
+			if(this.elems.length){
+				for(var i=0;i<this.elems.length;i++){
+					this.elems[i]['on'+type]=fn;
+				}
+			}
+		},
 		//fetch,查找父元素或子元素时都会将旧结果放入栈底,将当前结果置顶
 		
 		//按下标选择查询结果中的元素
@@ -434,7 +456,7 @@
 		},
 		isElems:function(){
 		}
-	};//end Docms
+	};//end Docms------------------------------
 	//按选择器选择元素 格式"#id div ul>li a.link>.span"
 	//实现过程:1.拆分选择器,2.格式化选择器,3.筛选元素,4.遍历选择器1,重复2+3
 	Docms.query=function(selector,par){
@@ -460,7 +482,7 @@
 							}
 						}
 						//根据选择器筛选全部子元素
-						console.log(i+":"+elems);
+						//console.log(i+":"+elems);
 						pars=Docms.elemsFilter(elems,selArr[i]);
 					}else{
 						//如果两个标签间是空格,获取每个元素所有后代元素
@@ -705,14 +727,14 @@
 			}
 			return _temp;
 		}else{
-			console.info("Docms tips:elemsFilter() invalid elemsArr+exp");
+			Docms.isArray(elemsArr)||(console.info("Docms tips:elemsFilter() invalid elemsArr+exp"));
 			return [];
 		}
 	}
 	//兼容ie7:类数组转换
 	Docms.arrConvert=function(arr){
 		try{
-			arr=Array.prototype.slice.call(arr);
+			Docms.isArray(arr)||(arr=Array.prototype.slice.call(arr));
 		}catch(e){
 			for(var i=0,_temp=[];i<arr.length;i++){
 				_temp[i]=arr[i];
@@ -720,6 +742,20 @@
 			arr=_temp;
 		}
 		return arr;
+	}
+	//元素数组去重
+	Docms.unique=function(arr){
+		for(var elems=[arr[0]],bool,i=1;i<arr.length;i++){
+			bool=!0;
+			for(var j=0;j<elems.length;j++){
+				if(arr[i]==elems[j]){
+					bool=!1;
+					break;
+				}
+			}
+			bool&&(elems.push(arr[i]));
+		}
+		return elems;
 	}
 	//定义ajax函数
 	Docms.ajax=function(config) {
@@ -847,8 +883,25 @@
 		DM=w.Docms=Docms;
 	}
 }(window,document);
+//兼容ie7/8,去头尾空格
 if(!String.prototype.trim){
 	String.prototype.trim=function(){return this.replace(/^\s*|\s*$/g,"")}
+}
+//兼容ie7/8,元素检索
+if(!Array.prototype.indexOf){
+	Array.prototype.indexOf=function(elem){
+		var i=0;
+		return (function(arr){
+			if(elem===arr[i]){
+				return i;
+			}
+			if(++i<arr.length){
+				return arguments.callee(arr);
+			}else{
+				return -1;
+			}
+		})(this);
+	}
 }
 //-------------------------------------------------------------------------------------------------------------
 
