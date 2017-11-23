@@ -43,7 +43,7 @@
 				if(selector instanceof Docms.fun.init){
 					this.elems=selector.elems;
 				//dom元素节点或者文档节点
-				}else if(selector.nodeType===1||selector.nodeType===9){
+				}else if(selector.nodeType===1||selector.nodeType===9||selector===w){
 					this.elems[0]=selector;
 				//数组或类数组
 				}else if(selector.length>0){
@@ -80,15 +80,16 @@
 					delete this[this.count-1-i]
 				}
 			}
-			this.count=this.elems.length;
 			for(var i=0,_temp=[];i<this.elems.length;i++){
-				_temp.push(this.elems[i]);
-				this[i]=this.elems[i]
+				if(this.elems[i]){
+					_temp.push(this.elems[i]);
+					this[i]=this.elems[i]
+				}
 			};
 			this.elems=_temp;
-			
+			this.count=this.elems.length;
 			//两个默认属性
-			if(this.elems[0]){
+			if(this.elems[0]&&this.elems[0]!==w){
 				this.parent=this.elems[0].parentNode;
 				this.children=Docms.arrConvert(this.elems[0].children);
 			}else{
@@ -336,37 +337,40 @@
 		//获取/设置样式,type:null/object/string,val:cssValue
 		css:function(type,val){
 			var reg=/height|width|margin|padding|font|left|right|top|bottom/;
-			if(typeof(type)=='object'){
-				for(var i in type){
-					if(reg.test(i)&&typeof(type[i])=='number'&&type[i]!=0){
-						type[i]+='px';
-					}
-					//兼容ie78
-					if(i=='opacity'){
-						this.elems[0].style.filter='alpha(opacity='+type[i]*100+')';
-					}
-					this.elems[0].style[i]=type[i];
+			for(var n=0;n<this.elems.length;n++){
 					
-				}
-				return this;
-			}else{
-				if(val){
-					if(typeof(type)=='string'){
-						if(type=='opacity'){
-							this.elems[0].style.filter='alpha(opacity='+val*100+')';
+				if(typeof(type)=='object'){
+					for(var i in type){
+						if(reg.test(i)&&typeof(type[i])=='number'&&type[i]!=0){
+							type[i]+='px';
 						}
-						this.elems[0].style[type]=val;
-						return this;
-					}else if(reg.test(type)&&typeof(val)=='number'&&val!=0){
-						this.elems[0].style[type]=val+'px';
-						return this;
+						//兼容ie78
+						if(i=='opacity'){
+							this.elems[n].style.filter='alpha(opacity='+type[i]*100+')';
+						}
+						this.elems[n].style[i]=type[i];
+						
 					}
+					return this;
 				}else{
-					if(window.getComputedStyle){
-						return type?window.getComputedStyle(this.elems[0] , null)[type]:
-							window.getComputedStyle(this.elems[0] , null);
+					if(val){
+						if(typeof(type)=='string'){
+							if(type=='opacity'){
+								this.elems[n].style.filter='alpha(opacity='+val*100+')';
+							}
+							this.elems[n].style[type]=val;
+							return this;
+						}else if(reg.test(type)&&typeof(val)=='number'&&val!=0){
+							this.elems[n].style[type]=val+'px';
+							return this;
+						}
 					}else{
-						return type?this.elems[0].currentStyle[type]:this.elems[0].currentStyle;
+						if(window.getComputedStyle){
+							return type?window.getComputedStyle(this.elems[n] , null)[type]:
+								window.getComputedStyle(this.elems[n] , null);
+						}else{
+							return type?this.elems[n].currentStyle[type]:this.elems[n].currentStyle;
+						}
 					}
 				}
 			}
@@ -766,7 +770,7 @@
 		//4.先去判断请求是否为post
 			isPost = /post/i.test(config.type);
 		//4.1无论是get还是post都要把json数据转化成get参数类型
-		config.data = jsonToGet(config.data);
+		config.data = jsonToStr(config.data);
 		//5.如果是get方式要判断是否要缓存，如果不要缓存就加时间戳。向地址上加时间的时候要判断之前是否有？号
 		isPost||(
 			config.url += (config.url.indexOf("?") > -1 ? "&" : "?") + (config.cache ? "" : new Date().getTime() + "=1") + "&" + config.data
@@ -838,17 +842,15 @@
 			return document.cookie;
 		}
 	}
-	function jsonToGet(data) {
+	function jsonToStr(data) {
 		var str = "";
 		//1.遍历json数据
 		for (var i in data) {
 			//2.将属性名与值连接起来     属性名=属性值
 			str += i + "=" + data[i] + "&"; //i=data[i]
 		}
-		//3.去掉最后一个多余的&符号
-		str = str.replace(/&+$/, "");
-		//4.将处理好的数据返回出去
-		return str;
+		//3.去掉最后一个多余的&符号,并返回处理好的数据
+		return str.replace(/&+$/, "");
 	}
 	function merge(ini) {
 		//2.配置默认选项
@@ -859,18 +861,16 @@
 			cache: false, //缓存
 			data: {},
 			dataType:'',
-			success: function() {},
-			beforeSend: function() {},
-			complete: function() {}
+			success: function(){},
+			beforeSend: function(){},
+			complete: function(){}
 		};
-		//2.1创建一个变量不给值，这就是undefined，用于比较属性是否是undefined
-		var z;
-		//2.2如果没有传递参数 让默认参数为空对象
+		//2.1如果没有传递参数 让默认参数为空对象
 		ini = ini || {};
 		//3.遍历默认选项，即使传进来的是选项中没有的属性也不会被添加进来
 		for (var i in config) {
-			//4.1就是配置属性名，从ini中找这个对应的数据，有就覆盖当前配置，没有就不管了
-			config[i] = ini[i] === z ? config[i] : ini[i];
+			//4.1就是配置属性名，从ini中找这个对应的数据，有就覆盖当前配置
+			config[i] = typeof(ini[i]) === 'undefined' ? config[i] : ini[i];
 		}
 		//返回合并结果
 		return config;
