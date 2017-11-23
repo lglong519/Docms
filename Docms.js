@@ -55,11 +55,13 @@
 					//console.warn("Docms tips:getElems() selector is not a String");
 					return this;
 				}
+				//createDocumentFragment()
 				if(/^\s*<.*?>\s*$/.test(selector)){
-					var _tempTag=d.createElement('table');
+					var _tempTag=d.createElement('div');
 					_tempTag.innerHTML=selector;
 					this.elems=_tempTag.children;
 				}
+				selector=selector.trim().replace(/\s{2,}/g," ");
 				//按id获取元素
 				/^#[^\s\.\#]+$/.test(selector)&&(
 					d.getElementById(selector.replace("#",""))&&(this.elems[0]=d.getElementById(selector.replace("#","")))
@@ -400,13 +402,49 @@
 			}
 			if(typeof(m)!=="undefined"){
 				//兼容ie789,解决表格元素innerHTML不可写的问题
-				if(/msie\s*[789]\.0/i.test(navigator.userAgent)&&/table|thead|tbody|tfoot|tr|th|td/i.test(this.elems[0].nodeName)){
-					var div=d.createElement(div),childs;
+				var tbReg=/table|thead|tbody|tfoot|tr|th|td/i;
+				if(/msie\s*[789]\.0/i.test(navigator.userAgent)&&tbReg.test(this.elems[0].nodeName)){
+					//字符串方式创建表格元素会按照表格完整结构生成,例如:要创建的只有一个td元素"<table><td></td></table>",实际就会生成这样:"<table><tbody><tr><td></td></tr></tbody></table>"
+					var div=d.createElement(div),child,
+						n=this.elems[0].childNodes.length;
+					for(var i=n-1;i>=0;i--){
+						this.elems[0].removeChild(this.elems[0].childNodes[i]);
+					}
 					div.innerHTML='<table>'+m+'</table>';
-					childs=div.children[0].children;
-					if(childs.length>0){
-						childs=childs[0].children;
-						for(var i=0;i<childs.length;this.elems[0].appendChild(childs[i++]));
+					//如果m是thead|tbody|tfoot
+					if(/^\s*<\s*(thead|tbody|tfoot)/i.test(m)){
+						child=div.children[0];
+						addChild(this.elems[0],child.children);
+					//如果m是tr
+					}else if(/^\s*<\s*tr/i.test(m)){
+						child=div.children[0].children[0];
+						addChild(this.elems[0],child.children);
+					//如果m是th|td
+					}else if(/^\s*<\s*(th|td)/i.test(m)){
+						child=div.children[0].children[0].children[0];
+						addChild(this.elems[0],child.children);
+					}else{
+						//如果m是非表格元素或字符串
+						child=div.children[0];
+						n=child.childNodes.length;
+						for(var i=n-1;i>=0;i--){
+							if(!tbReg.test(child.childNodes[i].nodeName)){
+								/*
+								if(child.childNodes[i].nodeType==3){
+									child.childNodes[i].nodeValue.replace(/^\s*|\s*$/g,"")!=""&&(this.elems[0].appendChild(child.childNodes[i]));
+								}else{
+									this.elems[0].appendChild(child.childNodes[i]);
+								}
+								*/
+								this.elems[0].appendChild(child.childNodes[i]);
+							}
+						}
+					}
+					function addChild(p,c){
+						var n=c.length;
+						for(var i=n-1;i>=0;i--){
+							p.appendChild(c[i]);
+						}
 					}
 				}else{
 					this.elems[0].innerHTML=m;
@@ -526,7 +564,7 @@
 	Docms.wWidth=function(){
 		return document.documentElement.clientWidth
 	}
-	//格式化选择器参数
+	//格式化选择器参数,返回一个对象
 	Docms.formatSelector=function(exp){
 		if(typeof(exp)!='string'){
 			throw new TypeError("Docms tips:formatSelector()"+exp);
@@ -566,21 +604,24 @@
 	//根据选择器过滤元素
 	Docms.elemsFilter=function(elemsArr,exp){
 		elemsArr instanceof Docms.fun.init&&(elemsArr=elemsArr.elems);
+		//如果传入的元素数组和筛选条件不为空
 		if(elemsArr.length&&typeof(exp)=="string"&&exp){
+			//按类型格式化筛选条件
 			var result=Docms.formatSelector(exp);
+			//如果是类选择器,则生成对应的查询正则表达式
 			result.type=='class'&&(reg=Docms.regOfIndStr(result.n));
+			//遍历元素数组
 			for(var _temp=[],i=0;i<elemsArr.length;i++){
+				//如果筛选条件是id,只需查询一次
 				if(result.type=='id'&&elemsArr[i].id==result.n){
 					_temp.push(elemsArr[i]);
 					break;
+				//如果筛选条件是class,先判断class是否存在
 				}else if(result.type=='class'&&reg.test(elemsArr[i].className)){
-					if(result.t){
-						if(elemsArr[i].nodeName==result.t){
-							_temp.push(elemsArr[i]);
-						}
-						continue;
-					}
-					_temp.push(elemsArr[i]);
+					//如果有标签则再判断标签名是否相等
+					result.t?
+						elemsArr[i].nodeName==result.t&&_temp.push(elemsArr[i]):
+						_temp.push(elemsArr[i]);
 				}else if(result.type=='tag'&&elemsArr[i].nodeName==result.t){
 					_temp.push(elemsArr[i]);
 				}
@@ -665,17 +706,17 @@
 			}
 		}
 		//传入的参数name有效,则根据val进行读取或设置cookie
-		if(name){
+		if(name){//encodeURIComponent结果字符太多
 			if(typeof(val)=='string'||typeof(val)=='number'){
-				exp?document.cookie=name+'='+encodeURIComponent(val)+';expires='+new Date(exp).toUTCString():
-				document.cookie=name+'='+encodeURIComponent(val);
+				exp?document.cookie=name+'='+escape(val)+';expires='+new Date(exp).toUTCString():
+				document.cookie=name+'='+escape(val);
 				return !0;
 			}else{
 				var reg=new RegExp('('+name+')=(.*?)($|(?=;))'),
 					arr=document.cookie.match(reg);
 				//返回值:["name=val", "name", "val"]
 				if(arr){
-					return decodeURIComponent(arr[2]);
+					return unescape(arr[2]);
 				}
 				return null;
 			}
@@ -729,7 +770,9 @@
 		DM=w.Docms=Docms;
 	}
 }(window,document);
-
+if(!String.prototype.trim){
+	String.prototype.trim=function(){return this.replace(/^\s*|\s*$/g,"")}
+}
 //-------------------------------------------------------------------------------------------------------------
 
 //兼容ie7/8,源自developer.mozilla.org
