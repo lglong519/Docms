@@ -152,11 +152,12 @@
 				for(var i=0;i<this.elems.length;i++){
 					if (this.elems[i].addEventListener) {
 						this.elems[i].addEventListener(type,fn,bool);
-						//兼容ie9,修正this的指向
+						//兼容ie78,并修正this的指向
 					}else if (this.elems[i].attachEvent){
-						this.elems[i].fn=fn;
-						this.elems[i].attachEvent('on'+type,this.elems[i].fn);
-						this.elems[i].removeAttribute('fn');
+						var me=this.elems[i];
+						this.elems[i].attachEvent('on'+type,function () {
+							fn.call(me);
+						});
 					}
 				}
 			}
@@ -304,9 +305,7 @@
 		each:function(fn){
 			//遍历所有元素,将下标i和i对应的元素当作参数传入fn并将this指向当前遍历到的元素
 			for(var i=0;i<this.elems.length;i++){
-				this.elems[i].fn=fn;
-				this.elems[i].fn(i,this.elems[i]);
-				this.elems[i].removeAttribute('fn');
+				fn.call(this.elems[i],i,this.elems[i]);
 			}
 			return this;
 		},
@@ -357,9 +356,9 @@
 							return this;
 						}
 					}else{
-						if(window.getComputedStyle){
-							return type?window.getComputedStyle(this.elems[n] , null)[type]:
-								window.getComputedStyle(this.elems[n] , null);
+						if(w.getComputedStyle){
+							return type?w.getComputedStyle(this.elems[n] , null)[type]:
+								w.getComputedStyle(this.elems[n] , null);
 						}else{
 							return type?this.elems[n].currentStyle[type]:this.elems[n].currentStyle;
 						}
@@ -731,7 +730,7 @@
 	Docms.arrConvert=function(arr){
 		try{
 			Docms.isArray(arr)||(arr=Array.prototype.slice.call(arr));
-		}catch(err){
+		}catch(e){
 			for(var i=0,_temp=[];i<arr.length;i++){
 				_temp[i]=arr[i];
 			}
@@ -793,7 +792,7 @@
 						var data=[];
 						try{
 							data=eval('('+xhr.responseText+')')
-						}catch(err){
+						}catch(e){
 							console.error('返回数据错误');
 						}
 						config.success(data, xhr);
