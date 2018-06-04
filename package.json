@@ -1,0 +1,13 @@
+{
+	"name": "docms",
+	"version": "1.0.0",
+	"author": "lglong519",
+	"description": "Javascript document manipulation set",
+	"main": "Docms.js",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/lglong519/Docms.git"
+	},
+	"homepage": "https://github.com/lglong519/Docms/blob/master/README.md",
+	"private": true
+}
